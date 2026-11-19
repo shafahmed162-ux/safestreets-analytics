@@ -1,5 +1,7 @@
 
 from pathlib import Path
+from datetime import datetime, timezone
+
 
 import pandas as pd
 import requests
@@ -92,6 +94,20 @@ def download_crime_data():
     )
 
     df.to_csv(OUTPUT_FILE, index=False)
+
+
+    timestamp_file = Path("data/processed/last_refresh.txt")
+
+    timestamp_file.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    timestamp_file.write_text(
+        datetime.now(timezone.utc).isoformat(),
+        encoding="utf-8",
+    )
+
 
     print("\nDownload complete!")
     print("Total records:", len(df))

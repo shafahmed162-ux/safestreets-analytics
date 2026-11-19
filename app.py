@@ -4,6 +4,8 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from src.download_crime_data import download_crime_data
+
 
 DATA_FILE = Path("data/raw/toronto_crime_recent.csv")
 
@@ -39,6 +41,27 @@ def load_data():
 
 
 df = load_data()
+
+
+REFRESH_FILE = Path("data/processed/last_refresh.txt")
+
+if REFRESH_FILE.exists():
+    last_refresh = pd.to_datetime(
+        REFRESH_FILE.read_text().strip(),
+        utc=True,
+        errors="coerce",
+    )
+
+    if pd.notna(last_refresh):
+        st.caption(
+            "Last successful data refresh: "
+            f"{last_refresh:%B %d, %Y at %H:%M UTC}"
+        )
+    else:
+        st.caption("Last successful refresh: Unknown")
+else:
+    st.caption("Last successful refresh: Not recorded yet")
+
 
 if df.empty:
     st.error("No crime data found. Run the data downloader first.")
@@ -217,3 +240,35 @@ st.caption(
     "geographically offset for privacy. "
     "Counts are not population-adjusted crime rates."
 )
+
+
+st.divider()
+
+refresh_col, status_col = st.columns([1, 3])
+
+with refresh_col:
+    refresh_clicked = st.button(
+        "🔄 Refresh Crime Data",
+        use_container_width=True,
+    )
+
+if refresh_clicked:
+    try:
+        with st.spinner(
+            "Checking Toronto Police for updated crime records..."
+        ):
+            download_crime_data()
+            load_data.clear()
+
+        st.success("Crime data refreshed successfully!")
+        st.rerun()
+
+    except Exception as error:
+        st.error(f"Data refresh failed: {error}")
+
+with status_col:
+    st.caption(
+        "Refresh retrieves the latest 5,000 records available "
+        "from the Toronto Police public dataset."
+    )
+
