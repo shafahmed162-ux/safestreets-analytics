@@ -84,3 +84,59 @@ def test_rejects_duplicate_records(monkeypatch):
 
     with pytest.raises(ValueError, match="Duplicate"):
         download_month(2026, 9)
+
+
+def test_successful_download_saves_csv(
+    monkeypatch,
+    tmp_path,
+):
+    monkeypatch.chdir(tmp_path)
+
+    september_date = int(
+        pd.Timestamp(
+            "2026-09-15",
+            tz="UTC",
+        ).timestamp() * 1000
+    )
+
+    def fake_fetch(session, params):
+        if params.get("returnCountOnly") == "true":
+            return {"count": 2}
+
+        return {
+            "features": [
+                {
+                    "attributes": make_record(
+                        1,
+                        september_date,
+                    )
+                },
+                {
+                    "attributes": make_record(
+                        2,
+                        september_date,
+                    )
+                },
+            ]
+        }
+
+    monkeypatch.setattr(
+        "src.download_month.fetch_json",
+        fake_fetch,
+    )
+
+    download_month(2026, 9)
+
+    output = (
+        tmp_path
+        / "data/raw/toronto_crime_2026_09.csv"
+    )
+
+    assert output.exists()
+
+    saved = pd.read_csv(output)
+
+    assert len(saved) == 2
+    assert saved["OBJECTID"].is_unique
+    assert saved["OFFENCE"].notna().all()
+
