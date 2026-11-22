@@ -4,6 +4,10 @@ from pathlib import Path
 import pandas as pd
 import requests
 
+
+from src.data_quality import validate_crime_data
+
+
 BASE_URL = (
     "https://services.arcgis.com/"
     "S9th0jAJ7bqgIRjw/ArcGIS/rest/services/"
@@ -119,6 +123,16 @@ def main():
 
     if not df["REPORT_DATE"].dt.month.eq(9).all():
         raise RuntimeError("Records outside September found.")
+
+    
+    validate_crime_data(
+        df,
+        year=2026,
+        month=9,
+    )
+
+    print("Data-quality validation passed.")
+
 
     OUTPUT_FILE.parent.mkdir(
         parents=True,
